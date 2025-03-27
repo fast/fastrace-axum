@@ -42,6 +42,5 @@ jobs:
 
       - name: Check examples
         run: |
-          cd example
-          cargo +${{ matrix.rust }} check --bin client
-          cargo +${{ matrix.rust }} check --bin server
+          cargo +${{ matrix.rust }} check --example client
+          cargo +${{ matrix.rust }} check --example server
