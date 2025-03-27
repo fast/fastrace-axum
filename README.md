@@ -50,14 +50,18 @@ async fn main() {
         tracing_subscriber::Registry::default().with(fastrace_tracing::FastraceCompatLayer::new()),
     )
     .unwrap();
+
     // Configurate logging reporter.
     logforth::stderr().apply();
+
     // Configurate fastrace reporter.
     fastrace::set_reporter(ConsoleReporter, Config::default());
 
     let app = axum::Router::new()
         .route("/ping", axum::routing::get(ping))
-        .layer(fastrace_axum::FastraceLayer);  // Add the FastraceLayer to your routes.
+        // Add a the FastraceLayer to routes.
+        // The layer extracts trace context from incoming requests.
+        .layer(fastrace_axum::FastraceLayer);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
