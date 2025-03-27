@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, macos-latest, ubuntu-latest ]
+        rust: [ "1.80.0", "stable", "nightly" ]
+    env:
+      RUST_BACKTRACE: 1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Delete rust-toolchain.toml
+        run: rm rust-toolchain.toml
+      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
+
+      - name: Check format
+        if: ${{ matrix.rust == 'nightly' }}
+        run: cargo +${{ matrix.rust }} fmt --all -- --check
+
+      - name: Check clippy
+        if: ${{ matrix.rust == 'nightly' }}
+        run: cargo +${{ matrix.rust }} clippy --all-targets --all-features -- --deny warnings
+
+      - name: Build
+        run: cargo +${{ matrix.rust }} build --workspace --all-targets
+
+      - name: Check examples
+        run: |
+          cd example
+          cargo +${{ matrix.rust }} check --bin client
+          cargo +${{ matrix.rust }} check --bin server

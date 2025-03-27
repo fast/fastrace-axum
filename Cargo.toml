@@ -1,0 +1,31 @@
+[package]
+name = "fastrace-axum"
+version = "0.1.0"
+
+categories = ["development-tools::debugging"]
+description = "A axum instrument for propagating trace context for fastrace"
+keywords = ["tracing", "fastrace", "axum", "traceparent", "propagation"]
+readme = "README.md"
+
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/fast/fastrace-axum"
+rust-version = "1.80"
+
+[dependencies]
+fastrace = "0.7"
+http = "1.2"
+tower-layer = "0.3"
+tower-service = "0.3"
+
+[dev-dependencies]
+axum = "0.8"
+fastrace = { version = "0.7", features = ["enable"] }
+fastrace-reqwest = { git = "https://github.com/fast/fastrace-reqwest" }
+fastrace-tracing = { git = "https://github.com/fast/fastrace-tracing" }
+logforth = "0.23"
+reqwest = "0.12"
+tokio = { version = "1", features = ['full'] }
+tower = "0.5"
+tracing = "0.1"
+tracing-subscriber = "0.3"
