@@ -62,7 +62,7 @@ async fn ping() -> &'static str {
 
 ### Client Usage with fastrace-reqwest
 
-To propagate trace context from clients to your Poem service:
+To propagate trace context from clients to your axum service:
 
 ```rust
 use fastrace::prelude::*;
@@ -72,7 +72,7 @@ use reqwest::Client;
 async fn send_request() {
     let client = Client::new();
     let response = client
-        .get("http://your-poem-service/endpoint")
+        .get("http://your-axum-service/endpoint")
         .headers(fastrace_reqwest::traceparent_headers()) // Adds traceparent header.
         .send()
         .await
