@@ -102,10 +102,11 @@ Both applications will output trace information showing the request flow, includ
 
 ## How It Works
 
-2. When a server receives the request, `FastraceLayer` extracts the trace context from the `traceparent` header and creates a new span as a child of the received context.
-3. If no trace context is provided, the server creates a new root span.
-
-This process ensures that all operations across services are properly connected in the resulting trace, providing visibility into the entire request lifecycle.
+1. When a request arrives, the middleware checks for a `traceparent` header.
+2. If present, it extracts the trace context; otherwise, it creates a new random context.
+3. A new root span is created for the request using the URI as the name.
+4. The request handler is executed within this span, and any child spans are properly linked.
+5. The trace is then collected by your configured fastrace reporter.
 
 ## License
 
