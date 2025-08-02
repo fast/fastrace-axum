@@ -14,7 +14,8 @@ async fn main() {
         let root = Span::root("client".to_string(), SpanContext::random());
         let _g = root.set_local_parent();
 
-        send_request().await;
+        send_request(None).await;
+        send_request(Some("TheIdToTest".to_string())).await;
     }
 
     // Flush any remaining traces before the program exits.
@@ -24,10 +25,17 @@ async fn main() {
 /// Send an HTTP request to the server with trace context propagation.
 /// The traceparent_headers() function adds the trace context to the request headers.
 #[fastrace::trace]
-async fn send_request() {
+async fn send_request(id: Option<String>) {
     let client = Client::new();
+
+    let mut url = "http://localhost:8080/ping".to_string();
+
+    if let Some(id) = id {
+        // If an ID is provided, append it to the URL.
+        url.push_str(&format!("/{}", id));
+    }
     let response = client
-        .get("http://localhost:8080/ping")
+        .get(&url)
         .headers(traceparent_headers())
         .send()
         .await

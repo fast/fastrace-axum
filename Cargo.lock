@@ -248,8 +248,9 @@ dependencies = [
  "fastrace",
  "fastrace-reqwest",
  "fastrace-tracing",
- "http",
  "logforth",
+ "opentelemetry-semantic-conventions",
+ "pin-project",
  "reqwest",
  "tokio",
  "tower",
@@ -927,6 +928,12 @@ dependencies = [
  "pkg-config",
  "vcpkg",
 ]
+
+[[package]]
+name = "opentelemetry-semantic-conventions"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83d059a296a47436748557a353c5e6c5705b9470ef6c95cfc52c21a8814ddac2"
 
 [[package]]
 name = "overload"
