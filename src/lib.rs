@@ -58,7 +58,7 @@ where
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = InSpan<InstrumentedHttpResponseFuture<S::Future>>;
+    type Future = InSpan<InspectHttpResponse<S::Future>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(cx)
@@ -85,18 +85,18 @@ where
         }
 
         let fut = self.service.call(req);
-        let i = InstrumentedHttpResponseFuture { inner: fut };
-        i.in_span(root)
+        let fut = InspectHttpResponse { inner: fut };
+        fut.in_span(root)
     }
 }
 
 #[pin_project::pin_project]
-pub struct InstrumentedHttpResponseFuture<F> {
+pub struct InspectHttpResponse<F> {
     #[pin]
     inner: F,
 }
 
-impl<F, E> Future for InstrumentedHttpResponseFuture<F>
+impl<F, E> Future for InspectHttpResponse<F>
 where F: Future<Output = Result<Response, E>>
 {
     type Output = F::Output;
