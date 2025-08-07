@@ -18,7 +18,7 @@ async fn main() {
         send_request(Some("TheIdToTest".to_string())).await;
     }
 
-    // Flush any remaining traces before the program exits.
+    // Flush all remaining traces before the program exits.
     fastrace::flush();
 }
 

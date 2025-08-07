@@ -1,6 +1,6 @@
 [package]
 name = "fastrace-axum"
-version = "0.1.1"
+version = "0.1.2"
 
 categories = ["development-tools::debugging"]
 description = "A axum instrument for propagating trace context for fastrace"
@@ -13,12 +13,12 @@ repository = "https://github.com/fast/fastrace-axum"
 rust-version = "1.80"
 
 [dependencies]
+axum = "0.8"
 fastrace = "0.7"
-opentelemetry-semantic-conventions = "0.30.0"
+opentelemetry-semantic-conventions = "0.30"
+pin-project = "1"
 tower-layer = "0.3"
 tower-service = "0.3"
-axum = "0.8"
-pin-project = { version = "1.1.8" }
 
 [dev-dependencies]
 axum = "0.8"
