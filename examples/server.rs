@@ -1,3 +1,4 @@
+use axum::extract::Path;
 use fastrace::collector::Config;
 use fastrace::collector::ConsoleReporter;
 use tracing_subscriber::layer::SubscriberExt;
@@ -18,6 +19,7 @@ async fn main() {
 
     let app = axum::Router::new()
         .route("/ping", axum::routing::get(ping))
+        .route("/ping/{id}", axum::routing::get(ping_with_id))
         // Add a the FastraceLayer to routes.
         // The layer extracts trace context from incoming requests.
         .layer(fastrace_axum::FastraceLayer);
@@ -29,4 +31,9 @@ async fn main() {
 #[fastrace::trace] // Trace individual handlers.
 async fn ping() -> &'static str {
     "pong"
+}
+
+#[fastrace::trace]
+async fn ping_with_id(Path(id): Path<String>) -> String {
+    format!("pong: {}", id)
 }

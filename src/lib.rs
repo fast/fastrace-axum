@@ -1,10 +1,19 @@
 #![doc = include_str!("../README.md")]
 
+use std::future::Future;
+use std::pin::Pin;
 use std::task::Context;
 use std::task::Poll;
 
+use axum::extract::MatchedPath;
+use axum::response::Response;
+use fastrace::future::InSpan;
+use fastrace::local::LocalSpan;
 use fastrace::prelude::*;
-use http::Request;
+use opentelemetry_semantic_conventions::trace::HTTP_REQUEST_METHOD;
+use opentelemetry_semantic_conventions::trace::HTTP_RESPONSE_STATUS_CODE;
+use opentelemetry_semantic_conventions::trace::HTTP_ROUTE;
+use opentelemetry_semantic_conventions::trace::URL_PATH;
 use tower_layer::Layer;
 use tower_service::Service;
 
@@ -40,24 +49,81 @@ pub struct FastraceService<S> {
     service: S,
 }
 
-impl<S, Body> Service<Request<Body>> for FastraceService<S>
-where S: Service<Request<Body>>
+use axum::extract::Request;
+
+impl<S> Service<Request> for FastraceService<S>
+where
+    S: Service<Request, Response = Response> + Send + 'static,
+    S::Future: Send + 'static,
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = fastrace::future::InSpan<S::Future>;
+    type Future = InSpan<InstrumentedHttpResponseFuture<S::Future>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.service.poll_ready(cx)
     }
 
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
+    fn call(&mut self, req: Request) -> Self::Future {
         let headers = req.headers();
         let parent = headers
             .get(TRACEPARENT_HEADER)
             .and_then(|traceparent| SpanContext::decode_w3c_traceparent(traceparent.to_str().ok()?))
             .unwrap_or(SpanContext::random());
-        let root = Span::root(req.uri().to_string(), parent);
-        self.service.call(req).in_span(root)
+
+        let span_name = get_request_span_name(&req);
+        let root = Span::root(span_name, parent);
+
+        root.add_properties(|| {
+            [
+                (HTTP_REQUEST_METHOD, req.method().to_string()),
+                (URL_PATH, req.uri().path().to_string()),
+            ]
+        });
+        if let Some(route) = req.extensions().get::<MatchedPath>() {
+            root.add_property(|| (HTTP_ROUTE, route.as_str().to_string()));
+        }
+
+        let fut = self.service.call(req);
+        let i = InstrumentedHttpResponseFuture { inner: fut };
+        i.in_span(root)
+    }
+}
+
+#[pin_project::pin_project]
+pub struct InstrumentedHttpResponseFuture<F> {
+    #[pin]
+    inner: F,
+}
+
+impl<F, E> Future for InstrumentedHttpResponseFuture<F>
+where F: Future<Output = Result<Response, E>>
+{
+    type Output = F::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        let poll = this.inner.poll(cx);
+
+        if let Poll::Ready(Ok(response)) = &poll {
+            LocalSpan::add_property(|| {
+                (
+                    HTTP_RESPONSE_STATUS_CODE,
+                    response.status().as_u16().to_string(),
+                )
+            });
+        }
+
+        poll
+    }
+}
+
+// See [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name)
+fn get_request_span_name(req: &Request) -> String {
+    let method = req.method().as_str();
+    if let Some(target) = req.extensions().get::<MatchedPath>() {
+        format!("{} {}", method, target.as_str())
+    } else {
+        method.to_string()
     }
 }
