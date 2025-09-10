@@ -80,9 +80,11 @@ where
                     (URL_PATH, req.uri().path().to_string()),
                 ]
             });
+            
             if let Some(route) = req.extensions().get::<MatchedPath>() {
                 root.add_property(|| (HTTP_ROUTE, route.as_str().to_string()));
             }
+
             root
         } else {
             Span::noop()
