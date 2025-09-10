@@ -71,8 +71,14 @@ where
         });
 
         let span = if let Some(parent) = parent {
-            let span_name = get_request_span_name(&req);
-            let root = Span::root(span_name, parent);
+            // https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name
+            let name = if let Some(target) = req.extensions().get::<MatchedPath>() {
+                format!("{} {}", req.method(), target.as_str())
+            } else {
+                req.method().to_string()
+            };
+
+            let root = Span::root(name, parent);
 
             root.add_properties(|| {
                 [
@@ -121,15 +127,5 @@ where F: Future<Output = Result<Response, E>>
         }
 
         poll
-    }
-}
-
-// See [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name)
-fn get_request_span_name(req: &Request) -> String {
-    let method = req.method().as_str();
-    if let Some(target) = req.extensions().get::<MatchedPath>() {
-        format!("{} {}", method, target.as_str())
-    } else {
-        method.to_string()
     }
 }
