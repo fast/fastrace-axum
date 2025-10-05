@@ -1,6 +1,6 @@
 [package]
 name = "fastrace-axum"
-version = "0.1.2"
+version = "0.1.3"
 
 categories = ["development-tools::debugging"]
 description = "A axum instrument for propagating trace context for fastrace"
