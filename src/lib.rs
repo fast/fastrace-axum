@@ -66,27 +66,39 @@ where
 
     fn call(&mut self, req: Request) -> Self::Future {
         let headers = req.headers();
-        let parent = headers
-            .get(TRACEPARENT_HEADER)
-            .and_then(|traceparent| SpanContext::decode_w3c_traceparent(traceparent.to_str().ok()?))
-            .unwrap_or(SpanContext::random());
-
-        let span_name = get_request_span_name(&req);
-        let root = Span::root(span_name, parent);
-
-        root.add_properties(|| {
-            [
-                (HTTP_REQUEST_METHOD, req.method().to_string()),
-                (URL_PATH, req.uri().path().to_string()),
-            ]
+        let parent = headers.get(TRACEPARENT_HEADER).and_then(|traceparent| {
+            SpanContext::decode_w3c_traceparent(traceparent.to_str().ok()?)
         });
-        if let Some(route) = req.extensions().get::<MatchedPath>() {
-            root.add_property(|| (HTTP_ROUTE, route.as_str().to_string()));
-        }
+
+        let span = if let Some(parent) = parent {
+            // https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name
+            let name = if let Some(target) = req.extensions().get::<MatchedPath>() {
+                format!("{} {}", req.method(), target.as_str())
+            } else {
+                req.method().to_string()
+            };
+
+            let root = Span::root(name, parent);
+
+            root.add_properties(|| {
+                [
+                    (HTTP_REQUEST_METHOD, req.method().to_string()),
+                    (URL_PATH, req.uri().path().to_string()),
+                ]
+            });
+
+            if let Some(route) = req.extensions().get::<MatchedPath>() {
+                root.add_property(|| (HTTP_ROUTE, route.as_str().to_string()));
+            }
+
+            root
+        } else {
+            Span::noop()
+        };
 
         let fut = self.service.call(req);
         let fut = InspectHttpResponse { inner: fut };
-        fut.in_span(root)
+        fut.in_span(span)
     }
 }
 
@@ -115,15 +127,5 @@ where F: Future<Output = Result<Response, E>>
         }
 
         poll
-    }
-}
-
-// See [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name)
-fn get_request_span_name(req: &Request) -> String {
-    let method = req.method().as_str();
-    if let Some(target) = req.extensions().get::<MatchedPath>() {
-        format!("{} {}", method, target.as_str())
-    } else {
-        method.to_string()
     }
 }
