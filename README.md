@@ -6,7 +6,7 @@
 [![CI Status](https://img.shields.io/github/actions/workflow/status/fast/fastrace-axum/ci.yml?style=flat-square&logo=github)](https://github.com/fast/fastrace-axum/actions)
 [![License](https://img.shields.io/crates/l/fastrace-axum?style=flat-square)](https://github.com/fast/fastrace-axum/blob/main/LICENSE)
 
-`fastrace-axum` is a middleware library that connects [fastrace](https://crates.io/crates/fastrace), a distributed tracing library, with [axum](https://crates.io/crates/axum), a gRPC framework for Rust. This integration enables seamless trace context propagation across microservice boundaries in gRPC-based applications.
+`fastrace-axum` is a middleware library that connects [fastrace](https://crates.io/crates/fastrace), a distributed tracing library, with [axum](https://crates.io/crates/axum), a web framework for Rust. This integration enables seamless trace context propagation across microservice boundaries in axum-based applications.
 
 ## What is Context Propagation?
 
@@ -77,7 +77,7 @@ async fn send_request() {
         .send()
         .await
         .unwrap();
-    
+
     // Process response...
 }
 ```
