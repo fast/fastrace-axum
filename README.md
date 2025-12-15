@@ -84,7 +84,7 @@ async fn send_request() {
 
 ## Example
 
-Check out the [examples directory](https://github.com/fast/fastrace-axum/tree/main/example) for a complete ping/pong service example that demonstrates both client and server tracing.
+Check out the [examples directory](https://github.com/fast/fastrace-axum/tree/main/examples) for a complete ping/pong service example that demonstrates both client and server tracing.
 
 To run the example:
 
