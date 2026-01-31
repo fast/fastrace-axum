@@ -47,7 +47,7 @@ async fn main() {
         .route("/ping", axum::routing::get(ping))
         // Add a the FastraceLayer to routes.
         // The layer extracts trace context from incoming requests.
-        .layer(fastrace_axum::FastraceLayer);
+        .layer(fastrace_axum::FastraceLayer::default());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
@@ -100,11 +100,36 @@ To run the example:
 
 Both applications will output trace information showing the request flow, including the propagated context.
 
+### Custom span context extractor
+
+By default, the layer reads the `traceparent` header and starts a new trace when it is
+missing or invalid. To customize extraction (for example, keep noop when it is missing),
+configure an extractor. Return `None` to keep noop:
+
+```rust
+use fastrace_axum::TRACEPARENT_HEADER;
+
+let app = axum::Router::new()
+    .route("/ping", axum::routing::get(ping))
+    .layer(
+        fastrace_axum::FastraceLayer::default()
+            .with_span_context_extractor(|req| {
+                req.headers()
+                    .get(TRACEPARENT_HEADER)
+                    .and_then(|traceparent| {
+                        fastrace::SpanContext::decode_w3c_traceparent(
+                            traceparent.to_str().ok()?,
+                        )
+                    })
+            }),
+    );
+```
+
 ## How It Works
 
-1. When a request arrives, the middleware checks for a `traceparent` header.
-2. If present, it extracts the trace context; otherwise, it creates a new random context.
-3. A new root span is created for the request using the URI as the name.
+1. When a request arrives, the middleware runs the span context extractor. By default, it decodes the `traceparent` header, otherwise start a new trace.
+2. If the extractor returns `None`, a noop span is used.
+3. When a context is available, a new root span is created for the request using the method and route as the name.
 4. The request handler is executed within this span, and any child spans are properly linked.
 5. The trace is then collected by your configured fastrace reporter.
 
