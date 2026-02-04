@@ -29,7 +29,7 @@ Add `fastrace-axum` to your Cargo.toml:
 ```toml
 [dependencies]
 fastrace = "0.7"
-fastrace-axum = "0.1"
+fastrace-axum = "0.2"
 ```
 
 Apply the `FastraceLayer` to your axum server:
@@ -108,6 +108,7 @@ configure an extractor. Return `None` to keep noop:
 
 ```rust
 use fastrace_axum::TRACEPARENT_HEADER;
+use fastrace::collector::SpanContext;
 
 let app = axum::Router::new()
     .route("/ping", axum::routing::get(ping))
