@@ -108,7 +108,6 @@ configure an extractor. Return `None` to keep the span as noop:
 
 ```rust
 use fastrace_axum::TRACEPARENT_HEADER;
-use fastrace::collector::SpanContext;
 
 let app = axum::Router::new()
     .route("/ping", axum::routing::get(ping))
@@ -118,7 +117,7 @@ let app = axum::Router::new()
                 req.headers()
                     .get(TRACEPARENT_HEADER)
                     .and_then(|traceparent| {
-                        fastrace::SpanContext::decode_w3c_traceparent(
+                        fastrace::collector::SpanContext::decode_w3c_traceparent(
                             traceparent.to_str().ok()?,
                         )
                     })
