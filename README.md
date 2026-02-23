@@ -103,8 +103,8 @@ Both applications will output trace information showing the request flow, includ
 ### Custom span context extractor
 
 By default, the layer reads the `traceparent` header and starts a new trace when it is
-missing or invalid. To customize extraction (for example, keep noop when it is missing),
-configure an extractor. Return `None` to keep noop:
+missing or invalid. To customize extraction (for example, to use a noop span when it is missing),
+configure an extractor. Return `None` to keep the span as noop:
 
 ```rust
 use fastrace_axum::TRACEPARENT_HEADER;
