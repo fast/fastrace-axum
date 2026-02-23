@@ -8,7 +8,7 @@ All significant changes to this project will be documented in this file.
 
 ### Breaking Changes
 
-* `FastraceLayer` now requires explicit construction: `FastraceLayer::default()`.
+* `FastraceLayer` now requires construction `FastraceLayer::default()`.
 
 ### New Features
 
