@@ -2,10 +2,12 @@
 
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::Context;
 use std::task::Poll;
 
 use axum::extract::MatchedPath;
+use axum::extract::Request;
 use axum::response::Response;
 use fastrace::future::InSpan;
 use fastrace::local::LocalSpan;
@@ -23,19 +25,54 @@ use tower_service::Service;
 /// the W3C Trace Context specification.
 pub const TRACEPARENT_HEADER: &str = "traceparent";
 
+type SpanContextExtractor = Arc<dyn Fn(&Request) -> Option<SpanContext> + Send + Sync + 'static>;
+
 /// Layer for intercepting and processing trace context in incoming requests.
 ///
 /// This layer extracts tracing context from incoming requests and creates a new span
 /// for each request. Add this to your axum server to automatically handle trace context
-/// propagation.
+/// propagation. By default, the layer uses the `traceparent` header to extract a span
+/// context and falls back to a random context when the header is missing or invalid.
+/// If the configured extractor returns `None`, a noop span is used.
 #[derive(Clone)]
-pub struct FastraceLayer;
+pub struct FastraceLayer {
+    span_context_extractor: SpanContextExtractor,
+}
+
+impl Default for FastraceLayer {
+    fn default() -> Self {
+        Self {
+            span_context_extractor: Arc::new(|req| {
+                req.headers()
+                    .get(TRACEPARENT_HEADER)
+                    .and_then(|traceparent| {
+                        SpanContext::decode_w3c_traceparent(traceparent.to_str().ok()?)
+                    })
+                    .or_else(|| Some(SpanContext::random()))
+            }),
+        }
+    }
+}
+
+impl FastraceLayer {
+    /// Configure a custom span context extractor.
+    ///
+    /// Return `None` to keep the span as noop.
+    pub fn with_span_context_extractor<F>(mut self, f: F) -> Self
+    where F: Fn(&Request) -> Option<SpanContext> + Send + Sync + 'static {
+        self.span_context_extractor = Arc::new(f);
+        self
+    }
+}
 
 impl<S> Layer<S> for FastraceLayer {
     type Service = FastraceService<S>;
 
     fn layer(&self, service: S) -> Self::Service {
-        FastraceService { service }
+        FastraceService {
+            service,
+            span_context_extractor: self.span_context_extractor.clone(),
+        }
     }
 }
 
@@ -47,9 +84,8 @@ impl<S> Layer<S> for FastraceLayer {
 #[derive(Clone)]
 pub struct FastraceService<S> {
     service: S,
+    span_context_extractor: SpanContextExtractor,
 }
-
-use axum::extract::Request;
 
 impl<S> Service<Request> for FastraceService<S>
 where
@@ -65,10 +101,7 @@ where
     }
 
     fn call(&mut self, req: Request) -> Self::Future {
-        let headers = req.headers();
-        let parent = headers.get(TRACEPARENT_HEADER).and_then(|traceparent| {
-            SpanContext::decode_w3c_traceparent(traceparent.to_str().ok()?)
-        });
+        let parent = (self.span_context_extractor)(&req);
 
         let span = if let Some(parent) = parent {
             // https://opentelemetry.io/docs/specs/semconv/http/http-spans/#name
